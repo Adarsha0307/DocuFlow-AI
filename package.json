@@ -1,0 +1,20 @@
+{
+  "name": "docuflow-ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DocuFlow AI — faceless 2D documentary video production automation",
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @docuflow/shared && npm run build -w @docuflow/sdk && npm run build -w @docuflow/web",
+    "dev": "npm run dev -w @docuflow/web",
+    "lint": "npm run lint -w @docuflow/web",
+    "typecheck": "npm run typecheck -w @docuflow/shared && npm run typecheck -w @docuflow/sdk && npm run typecheck -w @docuflow/web",
+    "api": "cd apps/api && uvicorn app.main:app --reload --port 8000"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

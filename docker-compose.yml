@@ -1,0 +1,66 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: docuflow
+      POSTGRES_PASSWORD: docuflow
+      POSTGRES_DB: docuflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docuflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://docuflow:docuflow@postgres:5432/docuflow
+      REDIS_URL: redis://redis:6379/0
+      WORKFLOW_ENGINE: celery
+      AUTH_SECRET: dev-only-change-me
+    ports:
+      - "8000:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    volumes:
+      - ./apps/api:/app
+
+  worker:
+    build: ./apps/worker
+    environment:
+      DATABASE_URL: postgresql+psycopg://docuflow:docuflow@postgres:5432/docuflow
+      REDIS_URL: redis://redis:6379/0
+      WORKFLOW_ENGINE: celery
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: celery -A apps.worker.worker.celery_app worker -Q workflow --loglevel=info
+    volumes:
+      - ./apps/api:/app
+      - ./apps/worker:/worker
+    working_dir: /worker
+
+volumes:
+  postgres_data:
